@@ -1,0 +1,181 @@
+---
+title: "Elections Exercise"
+author: "Evin Smith"
+output:
+  prettydoc::html_pretty:
+    theme: tactile
+    highlight: github
+    math: katex
+---
+
+A demonstration a couple different ways you could look at election data
+
+
+
+```{r setup, include=FALSE}
+rm(list=ls())
+options(scipen = 999)
+library(tidyverse)
+library(elections)
+library(randomForest)
+data("eldat")
+```
+
+# Data Dictionary 
+ 
+## American presidential election winners from 1920-2016
+
+electionyear: Calendar year in which the election was held.
+
+presel.Date: Date at which the election was held.
+
+winner: Name of the winner.
+
+winnerparty: Party of the winner.
+
+winnerparty.tmin1: Party of the winner, one election earlier.
+
+winnerparty.tmin2: Party of the winner, two elections earlier.
+
+winnerparty.tmin3: Party of the winner, three elections earlier.
+
+winnerparty.tmin4: Party of the winner, four elections earlier.
+runnerup Name of the runner up.
+
+runnerupparty: Party of the runner up.
+
+popvotepercmargin.rep: Popular vote margin (%) of the republican party as compared to the
+democratic party.
+
+popvotepercmargin.rep.tmin1: Popular vote margin (%) of the republican party as compared to
+the democratic party, one election earlier.
+
+turnoutperc: Turnout (%).
+turnoutperc.tmin1: Turnout (%), one election earlier.
+
+djia.reldiff: The relative change (%) of the Dow Jones index in the four years before the election.
+
+dispincome: Per capita disposable income (2009 dollars) in the calendar year of the election.
+
+dispincchange: Relative change (%) of the per capita disposable income over the four years before
+the election.
+
+# Considerations 
+## Limited data
+
+Limited features on social and global factors, major world event such as the COVID-19 pandemic would be expected to have an impact on future outcomes.
+
+# EDA
+
+### Data Quality Issues to note 
+Missing disposable income data  for earlier elections
+
+```{r, warning=FALSE}
+eldat %>% group_by(winnerparty) %>% count()
+eldat %>% distinct(winnerparty,winner) %>% group_by(winnerparty) %>% count()
+
+summary(eldat%>% select(dispincome,dispincchange,djia.reldiff,
+                         turnoutperc.tmin1,turnoutperc,popvotepercmargin.rep,
+                         popvotepercmargin.rep.tmin1))
+
+
+summary(eldat%>%filter(winnerparty=="Rep.") %>%
+          select(dispincome,dispincchange,djia.reldiff,,turnoutperc,popvotepercmargin.rep))
+
+summary(eldat%>%filter(winnerparty=="Dem.")%>%
+          select(dispincome,dispincchange,djia.reldiff,,turnoutperc,popvotepercmargin.rep))
+
+
+ eldat %>% group_by(winner,winnerparty) %>%
+   count() %>%
+   ungroup() %>%
+   group_by(number_of_terms=n,winnerparty) %>% 
+   count()
+
+```
+### Key Findings 
+
+When a republican is selected as a winner the median disposable income and the relative change (%) of the Dow Jones
+
+index in the four years is higher, median voter turnout is lower. 
+
+Of the 9 distinct republican candidates that have won between the years of 1920-2016 4 (45%) served more than 1 term
+
+of the 7 distinct democrat candidates that have won between the years of 1920-2016 3 (43%) served more than 1 term,
+with Franklin Roosevelt serving 4 terms from 1932-1944
+
+
+
+
+```{r, warning=FALSE}
+#Fit model for probability that the winner is a republican
+elmod1 <- glm(winnerparty == "Rep." ~ dispincome+dispincchange+djia.reldiff+turnoutperc+
+               popvotepercmargin.rep,
+data = eldat, family = binomial(link = logit))
+summary(elmod1)
+
+elmod2 <- glm(winnerparty == "Rep." ~ winnerparty.tmin1*winnerparty.tmin2+winnerparty.tmin3+winnerparty.tmin4,
+data = eldat, family = binomial(link = logit))
+summary(elmod2)
+
+elmod3 <- glm(winnerparty == "Dem." ~ dispincome+djia.reldiff+turnoutperc,
+data = eldat, family = binomial(link = logit))
+
+summary(elmod3)
+
+eldat_rf <- eldat %>%mutate(winnerparty=case_when(winnerparty=="Dem."~1,
+                                                  TRUE ~0),
+                            winnerparty.tmin1=case_when(winnerparty=="Dem."~1,
+                                                  TRUE ~0),
+                            winnerparty.tmin2=case_when(winnerparty=="Dem."~1,
+                                                  TRUE ~0))
+
+
+m.rf<- randomForest(
+  winnerparty ~ 
+    winnerparty.tmin1+
+    winnerparty.tmin1+
+    turnoutperc+
+    turnoutperc.tmin1+
+    djia.reldiff,
+    data = eldat_rf,
+  importance = T,
+  nperm = 2,
+  na.action = na.omit,
+  mtry = 3
+)
+
+importance(m.rf)
+m.rf
+
+
+
+```
+### Key Findings 
+
+The party that won two elections previously has a negative impact on who will win in the current election. 
+
+If a party has been held the office for two terms they are less likely to win in the current election 
+
+###  Other supplemental data idea
+
+Include exchange rate data in the model to see how the countries currency does against other major currencies 
+
+Include unemployment by age group, specifically broken down by generation like (baby-boomers, gen-z, millenals etc)
+
+(Idea is to try to include features that are captured by age group)
+
+Include demographic data from past elections 
+
+Include housing rate data 
+
+Include immigration data (how many people are moving to the country from another, how many citizens are leaving)
+
+Birth rates in the country 
+
+
+
+
+
+
+

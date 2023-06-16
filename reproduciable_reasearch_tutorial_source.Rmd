@@ -1,0 +1,118 @@
+---
+title: "How to make research reproducible on R"
+author: "Evin Smith"
+output:
+  prettydoc::html_pretty:
+    theme: tactile
+    highlight: github
+    math: katex
+---
+# Reproducible Research and Data Science
+The point of making research reproducible is to make it easier to re-create  and identify exactly what you did and why it was done.
+
+Using Rmarkdown helps with this by consolidating the all aspects of a data science project into one file.
+
+```{r setup, include=FALSE}
+rm(list=ls())
+library(tidyverse)
+library(tidymodels)
+library(recipes)
+head(mtcars)
+```
+
+# Tidyverse
+
+dplyr helps with making code more explicit and easily understandable by using the pipe operator ('%>%')
+Functions such as select and filter are easy to use and understand 
+Joins are also easier using the tidyverse
+
+```{r, warning=FALSE}
+mtcars %>% 
+  filter(cyl == 6)
+
+head(mtcars[1:3])
+
+mtcars %>% 
+  select(mpg,cyl,disp) %>% 
+  arrange(cyl,disp,mpg) %>% head()
+
+```
+This example shows the base R versus the tidyverse alternative and what the look like side by side.
+
+```{r, warning=FALSE}
+mtcars %>% 
+  inner_join(mtcars, by= 'wt', suffix= c('.x','.y')) %>% head()
+
+```
+
+# Tidymodels
+The modeling ecosystem in the tidyverse made up of 8 packages designed to handle different parts of a modeling project.
+parsnip, recipes and workflows take care of the preprocessing and provide a way to link a model to it's preprocessing. 
+Note: in the example below, I only use steps needed for this specific example, but there are many more steps that I didn't use in this example and they can all be found here: https://cran.r-project.org/web/packages/recipes/recipes.pdf
+Setting the seed enables the analysis to be reproducible when random numbers are used
+
+```{r, warning=FALSE}
+set.seed(555)
+# Put 3/4 of the data into the training set 
+data_split <- initial_split(iris, prop = 3/4)
+
+# Create data frames for the two sets:
+train_data <- training(data_split)
+test_data  <- testing(data_split)
+
+
+recipes_ex <- 
+  recipe(Species~ ., data = train_data) %>%
+  step_rm(Species) %>% prep(training = train_data)
+#estimates the required parameters from a training set to apply late
+
+bake(recipes_ex,test_data)
+ #applies recipes to new data 
+
+lm_mod <- 
+  linear_reg() %>% 
+  set_engine("lm")
+
+example_wflow <- 
+  workflow() %>% 
+  add_model(lm_mod) %>% 
+  add_recipe(recipes_ex)
+
+#example_fit <- fit(example_wflow, data = train_data)
+```
+
+
+# Git
+Open source version control system
+Keeps track of changes
+Keep all users working on a project using the most recent version
+
+`git init <directory>`
+
+## Create empty Git repo in specified directory
+
+`git status`
+
+## List which files are staged, unstaged, and untracked
+
+`git add`
+
+## Stage all changes in for the next commit
+
+`git commit -m "<message>"`
+
+## Commit the staged snapshot.
+
+`git push` 
+
+## Push the changes to the current branch 
+
+`git pull` 
+
+## Fetch and download content from a remote repository and immediately update the local repository to match that content
+
+
+
+
+
+
